@@ -37,9 +37,10 @@ const int cellSize = 20;
 int mouseX = 0;
 int mouseY = 0;
 std::unordered_set<int> barrier; //does searching insertion delation operation within Ω(1) complexity
-struct Cell lastFocusedCell, tempCell,startingPoint = {3,10};
+struct Cell lastFocusedCell, tempCell, startingPoint = {3, 10};
 int cellPerRow = (int)vw / cellSize; //TODO updates this whenever window resizes
 bool isLeftButtonPressed = false;
+bool didClickedStartPoint = false;
 
 void init()
 {
@@ -118,7 +119,7 @@ void drawGrid(int offset)
 
 void drawStartingPoint(int cellStartX, int cellStartY)
 {
-  
+
     drawCell(cellStartX, cellStartY, cellSize, GOLDEN_GATE_BRIDGE);
 }
 
@@ -128,10 +129,10 @@ void drawEndingPoint()
 }
 
 //to determine which cell mouse is focusing upon updates everytime whenever mouse moves on left button clicked
-void updateFousedCell()
+void updateFousedCell(int x, int y) //this will take the actual values of mouse cordinates an convert it into normalizedl values
 {
-    cell.x = (int)mouseX / cellSize; //this will give in which column mouse cursor is present like 0,1,2 and so on
-    cell.y = (int)mouseY / cellSize; //this will give in which row mouse cursor is present like 0,1,2,3.. and so on
+    cell.x = (int)x / cellSize; //this will give in which column mouse cursor is present like 0,1,2 and so on
+    cell.y = (int)y / cellSize; //this will give in which row mouse cursor is present like 0,1,2,3.. and so on
     // if ((tempCell.x - cell.x != 0) || (tempCell.y - cell.y != 0))
     // {
     //     lastFocusedCell.x = tempCell.x;
@@ -147,18 +148,29 @@ void onMouseMove(int x, int y)
     {
         if (isLeftButtonPressed == true)
         {
-            updateFousedCell();
+            updateFousedCell(x, y);
             mouseX = x;
             mouseY = y;
-            if (barrier.find(cell.y * cellPerRow + cell.x) == barrier.end() && (lastFocusedCell.x != cell.x || lastFocusedCell.y != cell.y))
-            {                                                 //if barrier cell is not alredy present in set
-                barrier.insert(cell.y * cellPerRow + cell.x); //combine cellX and cellY into one equivalent value
-            }
-            else if (lastFocusedCell.x != cell.x || lastFocusedCell.y != cell.y)
+            if (!didClickedStartPoint)//do this operation whenver starting point is not clicked
             {
-                barrier.erase(cell.y * cellPerRow + cell.x); //remove that cell if its allredy present in the set
+                if (barrier.find(cell.y * cellPerRow + cell.x) == barrier.end() && (lastFocusedCell.x != cell.x || lastFocusedCell.y != cell.y))
+                {                                                 //if barrier cell is not alredy present in set
+                    barrier.insert(cell.y * cellPerRow + cell.x); //combine cellX and cellY into one equivalent value
+                }
+                else if (lastFocusedCell.x != cell.x || lastFocusedCell.y != cell.y)
+                {
+                    barrier.erase(cell.y * cellPerRow + cell.x); //remove that cell if its allredy present in the set
+                }
             }
             // printf("mouseX = %d mouseY = %d\ncell num x = %d  y = %d\n", mouseX, mouseY, cell.x, cell.y);
+
+            //temp code should be modified
+            if (didClickedStartPoint)
+            {
+                startingPoint.x = cell.x;
+                startingPoint.y = cell.y;
+                drawStartingPoint(startingPoint.x, startingPoint.y);
+            }
         }
     }
     //this code should strictly go here
@@ -168,17 +180,22 @@ void onMouseMove(int x, int y)
 
 void onButtonClick(int button, int state, int x, int y)
 { //there are some errors need to fix these errors
-    printf("mouse button pressed\n");
-    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)//whenever mouse left button is pressed
+    // printf("mouse button pressed\n");
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) //whenever mouse left button is pressed
     {
         isLeftButtonPressed = true;
-        updateFousedCell();
-
-
+        updateFousedCell(x, y);
+        //if mouse point is clicked at starting point (inorder to move starting point)
+        if (cell.x == startingPoint.x && cell.y == startingPoint.y) //wehenver user clicks starting point set boolean value to true
+        {
+            didClickedStartPoint = true;
+        }
     }
-    if (button == GLUT_LEFT_BUTTON && state == GLUT_UP)//whenever mouse left button is relased
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_UP) //whenever mouse left button is relased
     {
         isLeftButtonPressed = false;
+        //wehenver user relases  pressed left button. set  boolean value to false (if its set to true)
+        didClickedStartPoint = false;
     }
 };
 
