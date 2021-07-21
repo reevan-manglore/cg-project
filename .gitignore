@@ -1,4 +1,4 @@
-./docs/*.pdf
-./docs/*.docx
-./docs/
-./out
+#ignore all files in docs folder
+docs 
+#igonore compiled binary
+out
