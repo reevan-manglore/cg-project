@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <unordered_set>
 #include <GL/glut.h>
+#include <algorithm>
 
 //for allowing user only to choose set of predefined colors //feature is pending for  to completion
 enum Colors
@@ -20,6 +21,20 @@ enum Colors
     DARK_ORCHID,
     FUCHSIA,
     POPSTAR,
+};
+
+enum MouseMovementAxis
+{
+    NONE,
+    LEFT,
+    RIGHT,
+    TOP,
+    BOTTOM,
+    TOP_LEFT,
+    TOP_RIGHT,
+    BOTTOM_LEFT,
+    BOTTOM_RIGHT
+
 };
 
 struct Cell
@@ -37,10 +52,12 @@ const int cellSize = 20;
 int mouseX = 0;
 int mouseY = 0;
 std::unordered_set<int> barrier; //does searching insertion delation operation within Ω(1) complexity
-struct Cell lastFocusedCell, tempCell, startingPoint = {3, 10};
+struct Cell lastFocusedCell, tempCell, startingPoint = {3, 10}, endingPoint = {30, 10};
 int cellPerRow = (int)vw / cellSize; //TODO updates this whenever window resizes
 bool isLeftButtonPressed = false;
 bool didClickedStartPoint = false;
+bool didClickedEndPoint = false;
+int operation = 0; //to deteremine what operration user choosed from the menu
 
 void init()
 {
@@ -98,6 +115,15 @@ void drawCell(int x, int y, int length, Colors color)
     glEnd();
 }
 
+/*
+    accepts cellX and ceellY and then it gives the single numbr which represnts in ehich cell number currenty
+    point resides
+*/
+int getCellNumber(int cellX, int cellY)
+{
+    return (cellY * cellPerRow + cellX);
+}
+
 void drawGrid(int offset)
 {
     setColor(CARIBBEAN_GREEN);
@@ -117,15 +143,91 @@ void drawGrid(int offset)
     glEnd();
 }
 
-void drawStartingPoint(int cellStartX, int cellStartY)
+MouseMovementAxis getCurrentAxis(int mouseX, int mouseY)
 {
-
-    drawCell(cellStartX, cellStartY, cellSize, GOLDEN_GATE_BRIDGE);
+    static int lastMouseX = 0, lastMouseY = 0;
+    MouseMovementAxis axis = NONE;
+    if ((mouseX - lastMouseX > 0) && (mouseY - lastMouseY > 0))
+    {
+        axis = BOTTOM_RIGHT;
+        printf("we are moving %s\n", "BOTTOM_RIGHT ");
+    }
+    if ((mouseX - lastMouseX < 0) && (mouseY - lastMouseY > 0))
+    {
+        axis = BOTTOM_LEFT;
+        printf("we are moving %s\n", " BOTTOM_LEFT");
+    }
+    if ((mouseX - lastMouseX > 0) && (mouseY - lastMouseY < 0))
+    {
+        axis = TOP_RIGHT;
+        printf("we are moving %s\n", "TOP_RIGHT ");
+    }
+    else if ((mouseX - lastMouseX < 0) && (mouseY - lastMouseY < 0))
+    {
+        axis = TOP_LEFT;
+        printf("we are moving %s\n", "TOP_LEFT ");
+    }
+    else if ((mouseX - lastMouseX < 0))
+    {
+        axis = LEFT;
+        printf("we are moving %s\n", "LEFT ");
+    }
+    else if ((mouseX - lastMouseX > 0))
+    {
+        axis = RIGHT;
+        printf("we are moving %s\n", "RIGHT ");
+    }
+    else if ((mouseY - lastMouseY < 0))
+    {
+        axis = TOP;
+        printf("we are moving %s\n", " TOP");
+    }
+    else if ((mouseY - lastMouseY > 0))
+    {
+        axis = BOTTOM;
+        printf("we are moving %s\n", " BOTTOM");
+    }
+    lastMouseX = mouseX;
+    lastMouseY = mouseY;
+    return axis;
 }
 
-void drawEndingPoint()
+void drawStartingPoint(int cellX, int cellY)
 {
-    //some code
+    //here previous cell is used to store position of start point the instant before the start point  changes its cell position
+    static int previouscellX, previouscellY;
+    //if start point not on top of barrier
+    if (barrier.find(getCellNumber(cellX, cellY)) == barrier.end())
+    {
+        //here cellStart struct gives values in terms of cell number but each cell is cellSize apart so we multiply cellStart with cellsize
+        drawCell(cellX * cellSize, cellY * cellSize, cellSize, GOLDEN_GATE_BRIDGE);
+        previouscellX = cellX;
+        previouscellY = cellY;
+    }
+    //if its in top then draw start point in nearest cell to barrier
+    else
+    {
+        drawCell(previouscellX * cellSize, previouscellY * cellSize, cellSize, GOLDEN_GATE_BRIDGE);
+    }
+}
+
+void drawEndingPoint(int cellEndX, int cellEndY)
+{
+    //here previous cell is used to store position of end point the instant before the end point  changes its cell position
+    static int previouscellX, previouscellY;
+    //if end point not on top of barrier
+    if (barrier.find(getCellNumber(cellEndX, cellEndY)) == barrier.end())
+    {
+        //here cellEnd struct gives values in terms of cell number but each cell is cellSize apart so we multiply cellEnd with cellsize
+        drawCell(cellEndX * cellSize, cellEndY * cellSize, cellSize, EMERALD);
+        previouscellX = cellEndX;
+        previouscellY = cellEndY;
+    }
+    //if its in top then draw end point in nearest cell to barrier
+    else
+    {
+        drawCell(previouscellX * cellSize, previouscellY * cellSize, cellSize, EMERALD);
+    }
 }
 
 //to determine which cell mouse is focusing upon updates everytime whenever mouse moves on left button clicked
@@ -151,11 +253,14 @@ void onMouseMove(int x, int y)
             updateFousedCell(x, y);
             mouseX = x;
             mouseY = y;
-            if (!didClickedStartPoint)//do this operation whenver starting point is not clicked
+            if ( operation == 1 && !didClickedStartPoint && !didClickedEndPoint) //do this operation whenver starting point is not clicked and opeartion 1 is for drawing barriers
             {
-                if (barrier.find(cell.y * cellPerRow + cell.x) == barrier.end() && (lastFocusedCell.x != cell.x || lastFocusedCell.y != cell.y))
-                {                                                 //if barrier cell is not alredy present in set
-                    barrier.insert(cell.y * cellPerRow + cell.x); //combine cellX and cellY into one equivalent value
+                //if barrier cell is not alredy present in set and here lastFocuesd cell is to avoid continous drawing of barrier points
+                if (barrier.find(getCellNumber(cell.x, cell.y)) == barrier.end() && (lastFocusedCell.x != cell.x || lastFocusedCell.y != cell.y))
+                {
+                    //if barrier points are not on top of starting point and ending point only then draw barriers
+                    if ((getCellNumber(cell.x, cell.y) != getCellNumber(startingPoint.x, startingPoint.y)) && (getCellNumber(cell.x, cell.y) != getCellNumber(endingPoint.x, endingPoint.y)))
+                        barrier.insert(cell.y * cellPerRow + cell.x); //combine cellX and cellY into one equivalent value
                 }
                 else if (lastFocusedCell.x != cell.x || lastFocusedCell.y != cell.y)
                 {
@@ -165,14 +270,19 @@ void onMouseMove(int x, int y)
             // printf("mouseX = %d mouseY = %d\ncell num x = %d  y = %d\n", mouseX, mouseY, cell.x, cell.y);
 
             //temp code should be modified
-            if (didClickedStartPoint)
+            if (operation == 2 && didClickedStartPoint) //opearation 2 for moving moving starting point
             {
                 startingPoint.x = cell.x;
                 startingPoint.y = cell.y;
-                drawStartingPoint(startingPoint.x, startingPoint.y);
+            }
+            else if (operation == 3 && didClickedEndPoint) //opearation 3 for moving destination point
+            {
+                endingPoint.x = cell.x;
+                endingPoint.y = cell.y;
             }
         }
     }
+    printf("%d\n", getCurrentAxis(x, y)); //code to delete
     //this code should strictly go here
     lastFocusedCell.x = cell.x; //for avoiding continous change of state of  cells
     lastFocusedCell.y = cell.y; //for avoiding continous change of state of  cells
@@ -190,12 +300,17 @@ void onButtonClick(int button, int state, int x, int y)
         {
             didClickedStartPoint = true;
         }
+        else if (cell.x == endingPoint.x && cell.y == endingPoint.y) //wehenver user clicks starting point set boolean value to true
+        {
+            didClickedEndPoint = true;
+        }
     }
     if (button == GLUT_LEFT_BUTTON && state == GLUT_UP) //whenever mouse left button is relased
     {
         isLeftButtonPressed = false;
         //wehenver user relases  pressed left button. set  boolean value to false (if its set to true)
         didClickedStartPoint = false;
+        didClickedEndPoint = false;
     }
 };
 
@@ -210,9 +325,35 @@ void display()
         drawCell(*itr % cellPerRow * cellSize, *itr / cellPerRow * cellSize, cellSize, BLACK);
     }
     drawGrid(20);
-    drawStartingPoint(startingPoint.x * cellSize, startingPoint.y * cellSize);
+    drawStartingPoint(startingPoint.x, startingPoint.y);
+    drawEndingPoint(endingPoint.x, endingPoint.y); //tempory code to delete
     glutSwapBuffers();
     glutPostRedisplay();
+}
+
+void chooseOperation(int operationCode)
+{
+
+    switch (operationCode)
+    {
+    case 1:
+        operation = 1;
+        break;
+    case 2:
+        operation = 2;
+        break;
+    case 3:
+        operation = 3;
+        break;
+    case 4:
+        operation = 4;
+        break;
+    case 5:
+        operation = 5;
+    default:
+        operation = 0;
+        break;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -225,5 +366,12 @@ int main(int argc, char *argv[])
     glutDisplayFunc(display);
     glutMouseFunc(onButtonClick);
     glutMotionFunc(onMouseMove); //updates mouse position only when some mouse mouse button is clicked an moved
+    glutCreateMenu(chooseOperation);
+    glutAddMenuEntry("Draw walls", 1);
+    glutAddMenuEntry("Move starting point", 2);
+    glutAddMenuEntry("Move destination point", 3);
+    glutAddMenuEntry("Run dijakstra algorithm", 4);
+    glutAddMenuEntry("Help", 5);
+    glutAttachMenu(GLUT_RIGHT_BUTTON);
     glutMainLoop();
 }
