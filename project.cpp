@@ -6,9 +6,12 @@
     *TODO to fix window resizing problems
 */
 #include <stdio.h>
-#include <unordered_set>
 #include <GL/glut.h>
+#include <unordered_set>
+#include <vector>
+#include <queue>
 #include <algorithm>
+#include <climits>
 
 //for allowing user only to choose set of predefined colors //feature is pending for  to completion
 enum Colors
@@ -21,6 +24,8 @@ enum Colors
     DARK_ORCHID,
     FUCHSIA,
     POPSTAR,
+    SILVER_PINK,
+    MINION_YELLOW
 };
 
 enum MouseMovementAxis
@@ -52,12 +57,23 @@ const int cellSize = 20;
 int mouseX = 0;
 int mouseY = 0;
 std::unordered_set<int> barrier; //does searching insertion delation operation within Ω(1) complexity
-struct Cell lastFocusedCell, tempCell, startingPoint = {3, 10}, endingPoint = {30, 10};
-int cellPerRow = (int)vw / cellSize; //TODO updates this whenever window resizes
+struct Cell lastFocusedCell, tempCell, startingPoint = {3, 0}, endingPoint = {30, 10};
+const int cellPerRow = (int)vw / cellSize; //TODO updates this whenever window resizes
 bool isLeftButtonPressed = false;
 bool didClickedStartPoint = false;
 bool didClickedEndPoint = false;
-int operation = 0; //to deteremine what operration user choosed from the menu
+int operation = 0;  //to deteremine what operration user choosed from the menu
+std::vector<int> path; //used to store the nodes that need to be traversed to get shortest path
+
+void toPaint(void); //function that stores what all graphics need to be painted on screen than draws whenever this function is called
+
+void findShortestPath(void);
+
+void clearPath(void);
+
+bool isPathCalculated = false;//wether shortest path from starting point to ending point has once been calculated 
+
+bool toUpadatePathInRealTime = false;
 
 void init()
 {
@@ -96,11 +112,19 @@ void setColor(Colors c)
     }
     else if (c == FUCHSIA)
     {
-        glColor3f(0.8196, 0.2901, 0.8313);
+        glColor4f(0.8196, 0.2901, 0.8313, 0.3);
     }
     else if (c == POPSTAR)
     {
         glColor3f(0.8039, 0.2941, 0.3882);
+    }
+    else if (c == SILVER_PINK)
+    {
+        glColor4f(0.7725, 0.6941, 0.6941, 0.45);
+    }
+    else if(c == MINION_YELLOW)
+    {
+        glColor3f(0.9568,0.8823,0.1921);
     }
 }
 
@@ -150,42 +174,34 @@ MouseMovementAxis getCurrentAxis(int mouseX, int mouseY)
     if ((mouseX - lastMouseX > 0) && (mouseY - lastMouseY > 0))
     {
         axis = BOTTOM_RIGHT;
-        printf("we are moving %s\n", "BOTTOM_RIGHT ");
     }
     if ((mouseX - lastMouseX < 0) && (mouseY - lastMouseY > 0))
     {
         axis = BOTTOM_LEFT;
-        printf("we are moving %s\n", " BOTTOM_LEFT");
     }
     if ((mouseX - lastMouseX > 0) && (mouseY - lastMouseY < 0))
     {
         axis = TOP_RIGHT;
-        printf("we are moving %s\n", "TOP_RIGHT ");
     }
     else if ((mouseX - lastMouseX < 0) && (mouseY - lastMouseY < 0))
     {
         axis = TOP_LEFT;
-        printf("we are moving %s\n", "TOP_LEFT ");
     }
     else if ((mouseX - lastMouseX < 0))
     {
         axis = LEFT;
-        printf("we are moving %s\n", "LEFT ");
     }
     else if ((mouseX - lastMouseX > 0))
     {
         axis = RIGHT;
-        printf("we are moving %s\n", "RIGHT ");
     }
     else if ((mouseY - lastMouseY < 0))
     {
         axis = TOP;
-        printf("we are moving %s\n", " TOP");
     }
     else if ((mouseY - lastMouseY > 0))
     {
         axis = BOTTOM;
-        printf("we are moving %s\n", " BOTTOM");
     }
     lastMouseX = mouseX;
     lastMouseY = mouseY;
@@ -230,6 +246,15 @@ void drawEndingPoint(int cellEndX, int cellEndY)
     }
 }
 
+void drawBarrier() //used to draw all the walls in that is stored in the barrier set
+{
+    for (auto itr = barrier.begin(); itr != barrier.end(); itr++)
+    {
+
+        drawCell(*itr % cellPerRow * cellSize, *itr / cellPerRow * cellSize, cellSize, BLACK);
+    }
+}
+
 //to determine which cell mouse is focusing upon updates everytime whenever mouse moves on left button clicked
 void updateFousedCell(int x, int y) //this will take the actual values of mouse cordinates an convert it into normalizedl values
 {
@@ -253,7 +278,7 @@ void onMouseMove(int x, int y)
             updateFousedCell(x, y);
             mouseX = x;
             mouseY = y;
-            if ( operation == 1 && !didClickedStartPoint && !didClickedEndPoint) //do this operation whenver starting point is not clicked and opeartion 1 is for drawing barriers
+            if (operation == 1 && !didClickedStartPoint && !didClickedEndPoint) //do this operation whenver starting point is not clicked and opeartion 1 is for drawing barriers
             {
                 //if barrier cell is not alredy present in set and here lastFocuesd cell is to avoid continous drawing of barrier points
                 if (barrier.find(getCellNumber(cell.x, cell.y)) == barrier.end() && (lastFocusedCell.x != cell.x || lastFocusedCell.y != cell.y))
@@ -277,12 +302,18 @@ void onMouseMove(int x, int y)
             }
             else if (operation == 3 && didClickedEndPoint) //opearation 3 for moving destination point
             {
+               
                 endingPoint.x = cell.x;
                 endingPoint.y = cell.y;
+                if(isPathCalculated && barrier.find(getCellNumber(endingPoint.x,endingPoint.y)) == barrier.end())//if shortest path from starting point to ending point has been aleredy been calculated then upadte path in real time
+                {  //here iam giving conditon barrier.find() == barrrier.end() to ensure ending point does not lie upon barrier
+                     clearPath();//clear path calcualated from starting point to ending point from starting point to ending point
+                     findShortestPath();//recalulate  shortest path from starting point to ending point 
+                }
             }
         }
     }
-    printf("%d\n", getCurrentAxis(x, y)); //code to delete
+
     //this code should strictly go here
     lastFocusedCell.x = cell.x; //for avoiding continous change of state of  cells
     lastFocusedCell.y = cell.y; //for avoiding continous change of state of  cells
@@ -314,19 +345,279 @@ void onButtonClick(int button, int state, int x, int y)
     }
 };
 
+//here onwords iam implementing the core of this algorithm i.e path finding algorithm
+std::unordered_set<int> visitedNodes;
+const int verticalCellCount = (int)vh / cellSize;    //vh/cellSize give cell per column
+int distances[cellPerRow * verticalCellCount] = {0}; //to store distance of each node from starting point
+
+void initaliseDistances()
+{
+    for (int i = 0; i < cellPerRow * verticalCellCount; i++)
+        distances[i] = INT_MAX;
+}
+bool isBarrier(int num)
+{
+    return barrier.find(num) != barrier.end();
+}
+
+bool isVisited(int node)
+{
+    return visitedNodes.find(node) != visitedNodes.end();
+}
+
+int getTopNode(int node)
+{
+    return (((node / cellPerRow - 1) * cellPerRow) + (node % cellPerRow));
+}
+
+int getBottomNode(int node)
+{
+    return (((node / cellPerRow + 1) * cellPerRow) + (node % cellPerRow));
+}
+
+void dijaskstra()
+{
+
+    std::queue<int> nextNode;                                                  //next node that acts as source node inorder to relax other nodes
+    const int STARTING_POINT = startingPoint.y * cellPerRow + startingPoint.x; //here starting point does not accepts values here in terms of x and y axis here ite accepts cell number
+    const int ENDING_POINT = endingPoint.y * cellPerRow + endingPoint.x;
+    nextNode.push(STARTING_POINT);                        //starting node from where travesring begins
+    int rightWeight, leftWeight, topWeight, bottomWeight; //to adjust weights based on position of starting point and ending point
+    //its based upon nuber of observations
+    initaliseDistances();
+    distances[STARTING_POINT] = 0;
+    if (STARTING_POINT < ENDING_POINT)
+    {
+        //to determine wethere statring appears first or ending point appears first along horizontal row then to adjust corresponding weights
+        if ((STARTING_POINT) % cellPerRow < (ENDING_POINT) % cellPerRow)
+        {
+            rightWeight = 2;
+            leftWeight = 3;
+        }
+        else
+        {
+            rightWeight = 3;
+            leftWeight = 2;
+        }
+        topWeight = 4;
+        bottomWeight = 1;
+    }
+
+    else
+    {
+        //to determine wethere statring appears first or ending point appears first along horizontal row then to adjust corresponding weights
+        if ((STARTING_POINT) % cellPerRow < (ENDING_POINT) % cellPerRow)
+        {
+            rightWeight = 2;
+            leftWeight = 3;
+        }
+        else
+        {
+            rightWeight = 3;
+            leftWeight = 2;
+        }
+        topWeight = 1;
+        bottomWeight = 4;
+    }
+    while (!nextNode.empty())
+    {
+        int node = nextNode.front();                                //get front node from queue
+        nextNode.pop();                                             //delete front node
+        visitedNodes.insert(node);                                  //all visited nodes
+        int toRealax;                                               //node that needs to be relaxed
+        toRealax = node + 1;                                        //get right node
+        if (((node + 1) % cellPerRow != 0) && !isBarrier(toRealax)) //right node
+        //here iam performing conditon by node + 1 beccuse all values of 1st column added by 1 will get the value in terms of multipples of xCount
+        {
+
+            if (distances[toRealax] > distances[node] + rightWeight)
+            {
+                distances[toRealax] = distances[node] + rightWeight;
+                if (!isVisited(toRealax))
+                    nextNode.push(toRealax);
+            }
+        }
+
+        toRealax = getBottomNode(node);
+        //here logic is bottom most row contain numbers up until xCount*yCount where yCount  = vh/cellPerRow
+        if (toRealax < (cellPerRow * ((int)vh / cellSize)) && !isBarrier(toRealax)) //bottom node
+        {
+            if (distances[toRealax] > distances[node] + bottomWeight)
+            {
+                distances[toRealax] = distances[node] + bottomWeight;
+                if (!isVisited(toRealax))
+                    nextNode.push(toRealax);
+            }
+        }
+
+        toRealax = node - 1;                                //get left node
+        if (node % cellPerRow != 0 && !isBarrier(toRealax)) //left node node
+        {
+
+            if (distances[toRealax] > distances[node] + leftWeight)
+            {
+                distances[toRealax] = distances[node] + leftWeight;
+                if (!isVisited(toRealax))
+                    nextNode.push(toRealax);
+            }
+        }
+
+        toRealax = getTopNode(node);
+        if ((toRealax) >= 0 && !isBarrier(toRealax)) //top node
+        {
+            if (distances[toRealax] > distances[node] + topWeight)
+            {
+                distances[toRealax] = distances[node] + topWeight;
+                if (!isVisited(toRealax))
+                    nextNode.push(toRealax);
+            }
+        }
+        ///this code will show all the visited nodes
+        glClear(GL_COLOR_BUFFER_BIT); //clear the screen
+        toPaint();                    //paint all the contents that are in paint function
+        glutSwapBuffers();
+        glutPostRedisplay();
+    }
+    findShortestPath(); //draw shortest path from starting point to ending point
+    //inorder to avoid infinite looping so as soon as algorithm finshes its work make operation(from menu) = 0
+    operation = 0;
+}
+
+void findShortestPath()
+{
+    std::vector<int> temp;                                                     //here since we are backtracking we need to store all the nodes in temp variable and then unwind all those contents from top position to path variable
+    const int STARTING_POINT = startingPoint.y * cellPerRow + startingPoint.x; //here starting point does not accepts values here in terms of x and y axis here ite accepts cell number
+    const int ENDING_POINT = endingPoint.y * cellPerRow + endingPoint.x;
+    int leftNode, topNode, rightNode, bottomNode, currentNode = ENDING_POINT, smallestNode, smallestNodeVal;
+    int count = 0;                     //in order to avoid infinite loops if any exists in the programme
+    isPathCalculated = true;
+    if (distances[ENDING_POINT] > 30000) //if the ending point is unrechable then return out of this function withouth performing any operation
+    {
+        return;
+    }
+    temp.push_back(ENDING_POINT); //starting point from where backtracking begins
+    while (currentNode != STARTING_POINT)
+    {
+        count++;                   //to avoid infinite loops
+        smallestNodeVal = INT_MAX; //initial assignment
+        rightNode = currentNode + 1;
+        bottomNode = getBottomNode(currentNode);
+        leftNode = currentNode - 1;
+        topNode = getTopNode(currentNode);
+        if ((currentNode + 1) % cellPerRow != 0) //right node
+        {
+
+            if (distances[rightNode] < smallestNodeVal)
+            {
+                smallestNodeVal = distances[rightNode];
+                smallestNode = rightNode;
+            }
+        }
+
+        if (bottomNode < (cellPerRow * verticalCellCount)) //bottom node
+        {
+
+            if (distances[bottomNode] < smallestNodeVal)
+            {
+                smallestNodeVal = distances[bottomNode];
+                smallestNode = bottomNode;
+            }
+        }
+
+        if (currentNode % cellPerRow != 0) //left node node
+        {
+
+            if (distances[leftNode] < smallestNodeVal)
+            {
+                smallestNodeVal = distances[leftNode];
+                smallestNode = leftNode;
+            }
+        }
+
+        if (topNode >= 0) //top node
+        {
+
+            if (distances[topNode] < smallestNodeVal)
+            {
+                smallestNodeVal = distances[topNode];
+                smallestNode = topNode;
+            }
+        }
+        temp.push_back(smallestNode);
+        currentNode = smallestNode;
+        if (count >= 5000) //some big number inorder to avoid infinite loop
+        {
+            printf("exiting due to infinite loop\n");
+            exit(1);
+        }
+    }
+    while (!temp.empty()) //inorder to draw the path from starting point i.e output of backtracked result stored in temp
+    {
+        path.push_back(temp.back()); //here i will get least recently backtarcked path i.e it starts from starting point in contrast to ending point
+        temp.pop_back();
+        if(!toUpadatePathInRealTime)//in order to reduce the overhead of redrawing screen again and again  whenver user wants upadte of path in real time 
+        {
+            glClear(GL_COLOR_BUFFER_BIT); //clear the screen
+            toPaint();                    //paint all the contents that are in paint function
+            glutSwapBuffers();
+            glutPostRedisplay();
+        }
+    }
+}
+
+void toPaint()
+{
+    //if algorithm has been run then then vistedNodes by dijakstra algo is non empy so if this set is non empty then we draw visted nodes on screen
+    if (!visitedNodes.empty())
+    {
+        for (auto i : visitedNodes)
+        {
+            if (i != getCellNumber(startingPoint.x, startingPoint.y) && i != getCellNumber(endingPoint.x, endingPoint.y))
+                drawCell(i % cellPerRow * cellSize, i / cellPerRow * cellSize, cellSize, FUCHSIA);
+        }
+    }
+    //draw the shortest path from starting point up to ending point
+    if (!path.empty()) //if path has been found only then execute code
+    {
+        for (auto i : path)
+            drawCell(i % cellPerRow * cellSize, i / cellPerRow * cellSize, cellSize, MINION_YELLOW); //in order to draw path from starting point to ending point
+    }
+
+    //draw all the walls
+    drawBarrier();
+    drawStartingPoint(startingPoint.x, startingPoint.y);
+    drawEndingPoint(endingPoint.x, endingPoint.y);
+    drawGrid(20); //draw grid of each cell size 20
+}
+
+void clearAllBarriers()
+{
+    barrier.clear();
+}
+
+void resetAllDistances()//reset all the calulated distances from statring node to every other node
+{
+    initaliseDistances();//reset all distances to INT_MAX i.e state of distances during starting of programme
+    visitedNodes.clear();
+    path.clear();//clear the path from starting point to ending point
+    isPathCalculated = false;//becuase we are recalculating distances
+    toUpadatePathInRealTime = false;//since we are recalculating the distances for entire board so update path in real time is not needed
+}
+
+void clearPath()//reset path traced from starting point to ending point
+{
+    path.clear();
+}
+
 void display()
 {
     int temp = 0;
     glClear(GL_COLOR_BUFFER_BIT);
-    //this code is only for testing purpose and does not belong to main application
-    for (auto itr = barrier.begin(); itr != barrier.end(); itr++)
+    toPaint();
+    if (operation == 4)
     {
-
-        drawCell(*itr % cellPerRow * cellSize, *itr / cellPerRow * cellSize, cellSize, BLACK);
+        dijaskstra();
     }
-    drawGrid(20);
-    drawStartingPoint(startingPoint.x, startingPoint.y);
-    drawEndingPoint(endingPoint.x, endingPoint.y); //tempory code to delete
     glutSwapBuffers();
     glutPostRedisplay();
 }
@@ -337,19 +628,27 @@ void chooseOperation(int operationCode)
     switch (operationCode)
     {
     case 1:
+        resetAllDistances();
         operation = 1;
         break;
     case 2:
+        resetAllDistances();//becuase dijakstra algorithm is single source algorithm so when source node changes then entire distances need to be recalculated
         operation = 2;
         break;
     case 3:
         operation = 3;
+        if(isPathCalculated)//if once path has aleredy been calculated then we need to recalculate shortest path from starting node to ending node in real time
+            toUpadatePathInRealTime = true;
         break;
     case 4:
         operation = 4;
         break;
-    case 5:
-        operation = 5;
+    case 5://command to clear the entire contents of board except for starting point and ending point
+       clearAllBarriers();
+       resetAllDistances();
+       isPathCalculated = false;
+       toUpadatePathInRealTime = false;
+       break;
     default:
         operation = 0;
         break;
@@ -362,6 +661,8 @@ int main(int argc, char *argv[])
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
     glutInitWindowSize(vw, vh);
     glutCreateWindow("Path Finding Visualization");
+    glEnable(GL_BLEND);                                //inorder to add transperrency
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); //inorder to add transpsrency
     init();
     glutDisplayFunc(display);
     glutMouseFunc(onButtonClick);
@@ -371,7 +672,8 @@ int main(int argc, char *argv[])
     glutAddMenuEntry("Move starting point", 2);
     glutAddMenuEntry("Move destination point", 3);
     glutAddMenuEntry("Run dijakstra algorithm", 4);
-    glutAddMenuEntry("Help", 5);
+    glutAddMenuEntry("Clear Board", 5);
     glutAttachMenu(GLUT_RIGHT_BUTTON);
     glutMainLoop();
+    return 0;
 }
