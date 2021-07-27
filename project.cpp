@@ -12,8 +12,9 @@
 #include <queue>
 #include <algorithm>
 #include <climits>
+#include <string>
 
-//for allowing user only to choose set of predefined colors //feature is pending for  to completion
+//for allowing user only to choose set of predefined colors
 enum Colors
 {
     BLACK,
@@ -26,20 +27,6 @@ enum Colors
     POPSTAR,
     SILVER_PINK,
     MINION_YELLOW
-};
-
-enum MouseMovementAxis
-{
-    NONE,
-    LEFT,
-    RIGHT,
-    TOP,
-    BOTTOM,
-    TOP_LEFT,
-    TOP_RIGHT,
-    BOTTOM_LEFT,
-    BOTTOM_RIGHT
-
 };
 
 struct Cell
@@ -62,7 +49,7 @@ const int cellPerRow = (int)vw / cellSize; //TODO updates this whenever window r
 bool isLeftButtonPressed = false;
 bool didClickedStartPoint = false;
 bool didClickedEndPoint = false;
-int operation = 0;  //to deteremine what operration user choosed from the menu
+int operation = 0;     //to deteremine what operration user choosed from the menu
 std::vector<int> path; //used to store the nodes that need to be traversed to get shortest path
 
 void toPaint(void); //function that stores what all graphics need to be painted on screen than draws whenever this function is called
@@ -71,7 +58,7 @@ void findShortestPath(void);
 
 void clearPath(void);
 
-bool isPathCalculated = false;//wether shortest path from starting point to ending point has once been calculated 
+bool isPathCalculated = false; //wether shortest path from starting point to ending point has once been calculated
 
 bool toUpadatePathInRealTime = false;
 
@@ -122,9 +109,9 @@ void setColor(Colors c)
     {
         glColor4f(0.7725, 0.6941, 0.6941, 0.45);
     }
-    else if(c == MINION_YELLOW)
+    else if (c == MINION_YELLOW)
     {
-        glColor3f(0.9568,0.8823,0.1921);
+        glColor3f(0.9568, 0.8823, 0.1921);
     }
 }
 
@@ -165,47 +152,6 @@ void drawGrid(int offset)
         glVertex2f(i, vh);
     }
     glEnd();
-}
-
-MouseMovementAxis getCurrentAxis(int mouseX, int mouseY)
-{
-    static int lastMouseX = 0, lastMouseY = 0;
-    MouseMovementAxis axis = NONE;
-    if ((mouseX - lastMouseX > 0) && (mouseY - lastMouseY > 0))
-    {
-        axis = BOTTOM_RIGHT;
-    }
-    if ((mouseX - lastMouseX < 0) && (mouseY - lastMouseY > 0))
-    {
-        axis = BOTTOM_LEFT;
-    }
-    if ((mouseX - lastMouseX > 0) && (mouseY - lastMouseY < 0))
-    {
-        axis = TOP_RIGHT;
-    }
-    else if ((mouseX - lastMouseX < 0) && (mouseY - lastMouseY < 0))
-    {
-        axis = TOP_LEFT;
-    }
-    else if ((mouseX - lastMouseX < 0))
-    {
-        axis = LEFT;
-    }
-    else if ((mouseX - lastMouseX > 0))
-    {
-        axis = RIGHT;
-    }
-    else if ((mouseY - lastMouseY < 0))
-    {
-        axis = TOP;
-    }
-    else if ((mouseY - lastMouseY > 0))
-    {
-        axis = BOTTOM;
-    }
-    lastMouseX = mouseX;
-    lastMouseY = mouseY;
-    return axis;
 }
 
 void drawStartingPoint(int cellX, int cellY)
@@ -260,13 +206,6 @@ void updateFousedCell(int x, int y) //this will take the actual values of mouse 
 {
     cell.x = (int)x / cellSize; //this will give in which column mouse cursor is present like 0,1,2 and so on
     cell.y = (int)y / cellSize; //this will give in which row mouse cursor is present like 0,1,2,3.. and so on
-    // if ((tempCell.x - cell.x != 0) || (tempCell.y - cell.y != 0))
-    // {
-    //     lastFocusedCell.x = tempCell.x;
-    //     lastFocusedCell.y = tempCell.y;
-    //     tempCell.x = cell.x;
-    //     tempCell.y = cell.y;
-    // }
 }
 
 void onMouseMove(int x, int y)
@@ -292,9 +231,7 @@ void onMouseMove(int x, int y)
                     barrier.erase(cell.y * cellPerRow + cell.x); //remove that cell if its allredy present in the set
                 }
             }
-            // printf("mouseX = %d mouseY = %d\ncell num x = %d  y = %d\n", mouseX, mouseY, cell.x, cell.y);
 
-            //temp code should be modified
             if (operation == 2 && didClickedStartPoint) //opearation 2 for moving moving starting point
             {
                 startingPoint.x = cell.x;
@@ -302,13 +239,13 @@ void onMouseMove(int x, int y)
             }
             else if (operation == 3 && didClickedEndPoint) //opearation 3 for moving destination point
             {
-               
+
                 endingPoint.x = cell.x;
                 endingPoint.y = cell.y;
-                if(isPathCalculated && barrier.find(getCellNumber(endingPoint.x,endingPoint.y)) == barrier.end())//if shortest path from starting point to ending point has been aleredy been calculated then upadte path in real time
-                {  //here iam giving conditon barrier.find() == barrrier.end() to ensure ending point does not lie upon barrier
-                     clearPath();//clear path calcualated from starting point to ending point from starting point to ending point
-                     findShortestPath();//recalulate  shortest path from starting point to ending point 
+                if (isPathCalculated && barrier.find(getCellNumber(endingPoint.x, endingPoint.y)) == barrier.end()) //if shortest path from starting point to ending point has been aleredy been calculated then upadte path in real time
+                {                                                                                                   //here iam giving conditon barrier.find() == barrrier.end() to ensure ending point does not lie upon barrier
+                    clearPath();                                                                                    //clear path calcualated from starting point to ending point from starting point to ending point
+                    findShortestPath();                                                                             //recalulate  shortest path from starting point to ending point
                 }
             }
         }
@@ -320,8 +257,7 @@ void onMouseMove(int x, int y)
 }
 
 void onButtonClick(int button, int state, int x, int y)
-{ //there are some errors need to fix these errors
-    // printf("mouse button pressed\n");
+{
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) //whenever mouse left button is pressed
     {
         isLeftButtonPressed = true;
@@ -489,7 +425,7 @@ void findShortestPath()
     const int STARTING_POINT = startingPoint.y * cellPerRow + startingPoint.x; //here starting point does not accepts values here in terms of x and y axis here ite accepts cell number
     const int ENDING_POINT = endingPoint.y * cellPerRow + endingPoint.x;
     int leftNode, topNode, rightNode, bottomNode, currentNode = ENDING_POINT, smallestNode, smallestNodeVal;
-    int count = 0;                     //in order to avoid infinite loops if any exists in the programme
+    int count = 0; //in order to avoid infinite loops if any exists in the programme
     isPathCalculated = true;
     if (distances[ENDING_POINT] > 30000) //if the ending point is unrechable then return out of this function withouth performing any operation
     {
@@ -555,7 +491,7 @@ void findShortestPath()
     {
         path.push_back(temp.back()); //here i will get least recently backtarcked path i.e it starts from starting point in contrast to ending point
         temp.pop_back();
-        if(!toUpadatePathInRealTime)//in order to reduce the overhead of redrawing screen again and again  whenver user wants upadte of path in real time 
+        if (!toUpadatePathInRealTime) //in order to reduce the overhead of redrawing screen again and again  whenver user wants upadte of path in real time
         {
             glClear(GL_COLOR_BUFFER_BIT); //clear the screen
             toPaint();                    //paint all the contents that are in paint function
@@ -595,16 +531,16 @@ void clearAllBarriers()
     barrier.clear();
 }
 
-void resetAllDistances()//reset all the calulated distances from statring node to every other node
+void resetAllDistances() //reset all the calulated distances from statring node to every other node
 {
-    initaliseDistances();//reset all distances to INT_MAX i.e state of distances during starting of programme
+    initaliseDistances(); //reset all distances to INT_MAX i.e state of distances during starting of programme
     visitedNodes.clear();
-    path.clear();//clear the path from starting point to ending point
-    isPathCalculated = false;//becuase we are recalculating distances
-    toUpadatePathInRealTime = false;//since we are recalculating the distances for entire board so update path in real time is not needed
+    path.clear();                    //clear the path from starting point to ending point
+    isPathCalculated = false;        //becuase we are recalculating distances
+    toUpadatePathInRealTime = false; //since we are recalculating the distances for entire board so update path in real time is not needed
 }
 
-void clearPath()//reset path traced from starting point to ending point
+void clearPath() //reset path traced from starting point to ending point
 {
     path.clear();
 }
@@ -632,27 +568,116 @@ void chooseOperation(int operationCode)
         operation = 1;
         break;
     case 2:
-        resetAllDistances();//becuase dijakstra algorithm is single source algorithm so when source node changes then entire distances need to be recalculated
+        resetAllDistances(); //becuase dijakstra algorithm is single source algorithm so when source node changes then entire distances need to be recalculated
         operation = 2;
         break;
     case 3:
         operation = 3;
-        if(isPathCalculated)//if once path has aleredy been calculated then we need to recalculate shortest path from starting node to ending node in real time
+        if (isPathCalculated) //if once path has aleredy been calculated then we need to recalculate shortest path from starting node to ending node in real time
             toUpadatePathInRealTime = true;
         break;
     case 4:
         operation = 4;
         break;
-    case 5://command to clear the entire contents of board except for starting point and ending point
-       clearAllBarriers();
-       resetAllDistances();
-       isPathCalculated = false;
-       toUpadatePathInRealTime = false;
-       break;
+    case 5: //command to clear the entire contents of board except for starting point and ending point
+        clearAllBarriers();
+        resetAllDistances();
+        isPathCalculated = false;
+        toUpadatePathInRealTime = false;
+        break;
     default:
         operation = 0;
         break;
     }
+}
+
+void welcomeScreen() //welcome screen
+{
+    char title[] = "Visualization Of Dijkstra's Algorithm";
+    char teamMemberTitle[] = "Team Members:";
+    std::string names[3] = {"Reevan   4SO18CS095", "Rakshith 4SO18CS093", "Rayan    4SO18CS094"};
+    glClear(GL_COLOR_BUFFER_BIT);
+    setColor(POPSTAR);
+    glRasterPos2f(250, 650);
+    for (char i : title)
+    {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, i); //main progarmme title
+    }
+
+    setColor(POPSTAR);
+    glRasterPos2f(50, 600);
+    for (char i : teamMemberTitle)
+    {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, i); //team member names title
+    }
+
+    for (int i = 0; i < 3; i++) //draw all team members names
+    {
+        glRasterPos2f(65, 600 - 20 * (i + 1));
+        for (int j = 0; j < names[i].length(); j++)
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, names[i][j]);
+    }
+
+    glRasterPos2f(250, 400);
+    for (char i : "Usage Manual")
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, i);
+
+    drawCell(300, 380, 20, GOLDEN_GATE_BRIDGE);
+    setColor(PACIFIC_BLUE);
+    glRasterPos2f(300 + 40, 340 - 35);
+    for (char i : "Starting Point")
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, i);
+
+    drawCell(300, 340, 20, EMERALD);
+    setColor(PACIFIC_BLUE);
+    glRasterPos2f(300 + 40, 380 - 35);
+    for (char i : "Ending Point")
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, i);
+
+    drawCell(300, vh - 280, 20, FUCHSIA);
+    setColor(PACIFIC_BLUE);
+    glRasterPos2f(300 + 40, 280 - 20);
+    for (char i : "Visited Nodes")
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, i);
+
+    drawCell(300, vh - 280 + 40, 20, MINION_YELLOW);
+    setColor(PACIFIC_BLUE);
+    glRasterPos2f(300 + 40, 240 - 15);
+    for (char i : "Shortest Path From Starting Point To Ending Point")
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, i);
+
+    drawCell(300, vh - 280 + 80, 20, BLACK);
+    setColor(PACIFIC_BLUE);
+    glRasterPos2f(300 + 40, 200 - 15);
+    for (char i : "Wall")
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, i);
+
+    setColor(PACIFIC_BLUE);
+    glRasterPos2f(250, 140);
+    for (char i : "Mouse Right Click To Choose  Operations")
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, i);
+
+    setColor(PACIFIC_BLUE);
+    glRasterPos2f(50, 100);
+    for (char i : "Mouse Left Click And Move To Draw Walls Or To Move Starting Point Or Ending Point")
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, i);
+
+    setColor(DARK_ORCHID);
+    glRasterPos2f(250, 40);
+    for (char i : "Hit   \"  SPACE BAR  \"   To Continue")
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, i);
+
+    glutSwapBuffers();
+    glutPostRedisplay();
+}
+
+void onSpaceBarHit(unsigned char key, int, int)
+{
+    if (key == ' ')
+    {
+        glutDisplayFunc(display);
+    }
+    glutPostRedisplay();
 }
 
 int main(int argc, char *argv[])
@@ -664,7 +689,7 @@ int main(int argc, char *argv[])
     glEnable(GL_BLEND);                                //inorder to add transperrency
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); //inorder to add transpsrency
     init();
-    glutDisplayFunc(display);
+    glutDisplayFunc(welcomeScreen);
     glutMouseFunc(onButtonClick);
     glutMotionFunc(onMouseMove); //updates mouse position only when some mouse mouse button is clicked an moved
     glutCreateMenu(chooseOperation);
@@ -674,6 +699,7 @@ int main(int argc, char *argv[])
     glutAddMenuEntry("Run dijakstra algorithm", 4);
     glutAddMenuEntry("Clear Board", 5);
     glutAttachMenu(GLUT_RIGHT_BUTTON);
+    glutKeyboardFunc(onSpaceBarHit); //for exiting welcome screen
     glutMainLoop();
     return 0;
 }
